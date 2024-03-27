@@ -21,6 +21,20 @@ from transformers import Pipeline, AutoModelForCausalLM, AutoTokenizer
 
 """ Helper functions """
 
+def remove_common(all_option_token_list):
+    # Find common words across all sentences
+    common_words = set(all_option_token_list[0])
+    for option_words in all_option_token_list[1:]:
+        common_words.intersection_update(option_words)
+
+    # Remove common words from each sentence
+    filtered_options = []
+    for option_words in all_option_token_list:
+        filtered_option_words = [word for word in option_words if word not in common_words]
+        filtered_options.append(filtered_option_words)
+
+    return filtered_sentences
+
 
 def print_delay(*args, **kwargs):
     """
@@ -165,13 +179,31 @@ class MultipleChoicePipeline(Pipeline):
                 text 5 corresponds to answer choice 1 for question 1,
                 etc.
         """
+#         # raise NotImplementedError("Problem 2c has not been completed yet!")
+
+#         num_questions = len(batch['question'])
+#         list_input_texts = []
+#         for i in range(num_questions):
+#             for answer_option_index in range(4):
+#                 full_str = f'''{self._demos}Q: {batch['question'][i]}\nA:{self._system_prompt} {batch['choices'][i][answer_option_index]}'''
+#                 list_input_texts.append(full_str)
+#         return list_input_texts
+
+
+        # EC trial
+    
         # raise NotImplementedError("Problem 2c has not been completed yet!")
 
         num_questions = len(batch['question'])
         list_input_texts = []
         for i in range(num_questions):
+            all_option_token_list = [batch['choices'][i][answer_option_index].split() for answer_option_index in range(4)]
+            option_text = remove_common(all_option_token_list)
+            
             for answer_option_index in range(4):
-                full_str = f'''{self._demos}Q: {batch['question'][i]}\nA:{self._system_prompt} {batch['choices'][i][answer_option_index]}'''
+#                 option_text = batch['choices'][i][answer_option_index]
+#                 option_text = option_text
+                full_str = f'''{self._demos}Q: {batch['question'][i]}\nA:{self._system_prompt} {option_text}'''
                 list_input_texts.append(full_str)
         return list_input_texts
 
