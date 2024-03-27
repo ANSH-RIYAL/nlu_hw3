@@ -168,7 +168,7 @@ class MultipleChoicePipeline(Pipeline):
         num_questions = len(batch['question'])
         input_sentences = []
         for i in range(num_questions):
-            full_str = 'Sample questions with their answers:\n' + self._demos + f'\nUsing the above format, answer this:\n\nQ: {batch["question"][i]}\n'
+            full_str = 'Sample questions with their answers:\n' + self._demos + f'\nUsing the above format, answer this:\n\nQ: {batch["question"][i]}\n(Tip: Ignore the common words between the options)\n'
             for ind in range(4):
                 full_str += f'A:{self._system_prompt} {batch["choices"][i][ind]}\n'
                 input_sentences.append(full_str)
