@@ -21,7 +21,6 @@ from transformers import Pipeline, AutoModelForCausalLM, AutoTokenizer
 
 """ Helper functions """
 
-
 def print_delay(*args, **kwargs):
     """
     Print statements often interrupt tqdm progress bars, since the
@@ -165,15 +164,15 @@ class MultipleChoicePipeline(Pipeline):
                 text 5 corresponds to answer choice 1 for question 1,
                 etc.
         """
+        # raise NotImplementedError("Problem 2c has not been completed yet!")
+
         num_questions = len(batch['question'])
-        input_sentences = []
+        list_input_texts = []
         for i in range(num_questions):
-            full_str = 'Sample questions with their answers:\n' + self._demos + f'\nUsing the above format, answer this:\n\nQ: {batch["question"][i]}\n(Tip: Ignore the common words between the options)\n'
-            for ind in range(4):
-                full_str += f'A:{self._system_prompt} {batch["choices"][i][ind]}\n'
-                input_sentences.append(full_str)
-#             print(full_str, '\n\n\n')
-        return input_sentences
+            for answer_option_index in range(4):
+                full_str = f'''{self._demos}Q: {batch['question'][i]}\nA:{self._system_prompt} {batch['choices'][i][answer_option_index]}'''
+                list_input_texts.append(full_str)
+        return list_input_texts
 
     def preprocess(self, batch: Dict[str, Any]) -> Dict[str, torch.Tensor]:
         """
@@ -191,12 +190,18 @@ class MultipleChoicePipeline(Pipeline):
             These tensors should be stored on the GPU if it is being
             used; otherwise, they should be stored on the CPU
         """
-        raw_inputs = self._get_input_texts(batch)
-        tokenized_inputs = self.tokenizer(raw_inputs, padding=True, return_tensors="pt")
+        # raise NotImplementedError("Problem 2d has not been completed yet!")
+
+        # obtain input texts for data records by calling _get_input_texts method.
+        inputs = self._get_input_texts(batch)
+        # input texts is now a list of inputs; tokenize this input.
+        tokenized_inputs = self.tokenizer(inputs, padding=True, return_tensors="pt", truncation=True)
+        # inputs is a dict of tensors; move data to CPU or GPU (depending on model).
         tokenized_inputs = {key: val.to(self.device) for key, val in tokenized_inputs.items()}
+        # return dict.
         return tokenized_inputs
 
-    def _forward(self, input_: Dict[str, torch.Tensor]) -> \
+    def _forward(self, input_: Dict[str, torch.Tensor], **args) -> \
             Dict[str, torch.Tensor]:
         """
         Problem 2d: Implement this function.
@@ -209,10 +214,15 @@ class MultipleChoicePipeline(Pipeline):
         :return: The logit scores assigned to each next-token prediction
             as well as the input_ids tensor from input_
         """
+        # raise NotImplementedError("Problem 2d has not been completed yet!")
+
         with torch.no_grad():
+            # keys-values of input passed into the model.
             model_outputs = self.model(**input_)
-            logit_values = model_outputs.logits
-        return {"input_ids": input_["input_ids"], "logits": logit_values}
+            # calculate logits & return.
+            logits = model_outputs.logits
+        dict_logits = {"input_ids": input_["input_ids"], "logits": logits}
+        return dict_logits
 
     def postprocess(self, outputs: Dict[str, torch.Tensor]) -> Output:
         """
@@ -233,14 +243,20 @@ class MultipleChoicePipeline(Pipeline):
             responds to question i and column j corresponds to answer
             choice j
         """
-        loss_fcn_input_ids = outputs["input_ids"][:, 1:]
-        loss_fcn_logits = outputs["logits"][:, :-1, :].permute(0,2,1)
-        
-        cross_entropy_loss = self.loss_fn(loss_fcn_logits, loss_fcn_input_ids)
-        loss = cross_entropy_loss.sum(dim=-1).reshape(-1, 4)
-        
-        pred_labels = torch.argmin(loss, dim=-1)
-        return Output(loss=loss.detach().numpy(), prediction=pred_labels.detach().numpy()) 
+        # raise NotImplementedError("Problem 2d has not been completed yet!")
+
+        # extract IDs and logits from outputs dict removing the first token for input_ids and last token for logits for each sequence.
+        loss_fcn_input_ids = outputs["input_ids"][..., 1:]
+        loss_fcn_logits = outputs["logits"][..., :-1, :].permute(0,2,1)
+        # compute cross-entropy loss between predicted probabilities & actual dist.
+        new_loss = self.loss_fn(loss_fcn_logits, loss_fcn_input_ids)
+        # loss summed across vocab size; row = question & column = answer choice. 
+        loss = new_loss.sum(dim=-1).reshape(-1, 4)
+        # predictions are answer choices with lowest loss per q.
+        new_labels = torch.argmin(loss, dim=-1)
+        postprocess_result = Output(loss=loss.detach().numpy(), prediction=new_labels.detach().numpy())
+        # return the loss and predictions in Output type.
+        return postprocess_result
 
 
 def run_model(pipeline: MultipleChoicePipeline, dataset: Dataset,
